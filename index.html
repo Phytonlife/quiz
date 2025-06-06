@@ -76,7 +76,7 @@
 
         .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126,  Gibbons);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
         }
 
         .btn:disabled {
@@ -147,7 +147,7 @@
             margin: 30px 0;
         }
 
-       時代: .question-number {
+        .question-number {
             color: #667eea;
             font-size: 18px;
             margin-bottom: 10px;
@@ -252,7 +252,10 @@
 
         .leaderboard-item {
             display: flex;
-           0px;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid #e0e0e0;
             font-size: 18px;
         }
 
@@ -437,7 +440,8 @@
             answers: {},
             score: 0,
             timeLeft: 10,
-            timerInterval: null
+            timerInterval: null,
+            playersAnswered: 0
         };
 
         // База вопросов
@@ -803,9 +807,9 @@
                     console.log('Получен статус finished, показ результатов');
                     showResults();
                 } else if (info.currentQuestion !== gameState.currentQuestion && info.status === 'playing') {
-                    clearInterval(gameState.timerInterval); // Очищаем таймер перед новым вопросом
+                    clearInterval(gameState.timerInterval);
                     gameState.currentQuestion = info.currentQuestion;
-                    gameState.answers = {}; // Сбрасываем ответы для нового вопроса
+                    gameState.answers = {};
                     if (gameState.currentQuestion < gameState.questions.length) {
                         console.log(`Переход к вопросу ${gameState.currentQuestion + 1}`);
                         displayQuestion();
@@ -845,8 +849,8 @@
                 btn.className = 'answer-btn';
                 btn.textContent = option;
                 btn.onclick = () => selectAnswer(index);
-                btn.style.pointerEvents = 'auto'; // Включаем взаимодействие с кнопками
-                btn.classList.remove('selected', 'correct', 'incorrect'); // Сбрасываем стили
+                btn.style.pointerEvents = 'auto';
+                btn.classList.remove('selected', 'correct', 'incorrect');
                 answersGrid.appendChild(btn);
             });
 
@@ -855,7 +859,7 @@
         }
 
         // Таймер
-        function startTimer() {
+        async function startTimer() {
             gameState.timeLeft = 10;
             updateTimerDisplay();
 
@@ -863,20 +867,48 @@
                 clearInterval(gameState.timerInterval);
             }
 
-            gameState.timerInterval = setInterval(() => {
+            // Слушаем количество ответов для текущего вопроса
+            const answersRef = database.ref(`rooms/${currentRoom}/answers/${gameState.currentQuestion}`);
+            answersRef.on('value', (snapshot) => {
+                const answers = snapshot.val() || {};
+                gameState.playersAnswered = Object.keys(answers).length;
+                console.log(`Ответили ${gameState.playersAnswered} игроков на вопрос ${gameState.currentQuestion + 1}`);
+            });
+
+            gameState.timerInterval = setInterval(async () => {
                 gameState.timeLeft--;
                 updateTimerDisplay();
 
-                if (gameState.timeLeft <= 0) {
+                if (gameState.timeLeft <= 0 || (isHost && gameState.playersAnswered >= Object.keys((await database.ref(`rooms/${currentRoom}/players`).once('value')).val()).length)) {
                     clearInterval(gameState.timerInterval);
-                    console.log(`Время на вопрос ${gameState.currentQuestion + 1} истекло`);
+                    answersRef.off(); // Отключаем слушатель ответов
+                    console.log(`Время на вопрос ${gameState.currentQuestion + 1} истекло или все ответили`);
+
+                    // Если игрок не ответил, сохраняем пустой ответ
                     if (!gameState.answers[gameState.currentQuestion]) {
-                        // Если игрок не ответил, сохраняем пустой ответ
-                        database.ref(`rooms/${currentRoom}/answers/${gameState.currentQuestion}/${currentPlayer.id}`).set({
+                        await database.ref(`rooms/${currentRoom}/answers/${gameState.currentQuestion}/${currentPlayer.id}`).set({
                             answer: -1,
                             timestamp: firebase.database.ServerValue.TIMESTAMP
                         });
                     }
+
+                    // Подсвечиваем правильный ответ для всех
+                    const question = gameState.questions[gameState.currentQuestion];
+                    document.querySelectorAll('.answer-btn').forEach((btn, index) => {
+                        btn.style.pointerEvents = 'none';
+                        if (index === question.correct) {
+                            btn.classList.add('correct');
+                        }
+                    });
+
+                    // Обновляем очки для тех, кто ответил правильно
+                    if (gameState.answers[gameState.currentQuestion] === question.correct && gameState.timeLeft > 0) {
+                        gameState.score++;
+                        await database.ref(`rooms/${currentRoom}/players/${currentPlayer.id}/score`).set(gameState.score);
+                        document.getElementById('playerScore').textContent = gameState.score;
+                    }
+
+                    // Ждем 1.5 секунды перед переходом к следующему вопросу
                     setTimeout(() => {
                         if (isHost) {
                             nextQuestion();
@@ -904,10 +936,10 @@
                 return;
             }
 
+            // Отмечаем выбранный ответ только визуально (синим)
             document.querySelectorAll('.answer-btn').forEach(btn => {
                 btn.style.pointerEvents = 'none';
             });
-
             const selectedBtn = document.querySelectorAll('.answer-btn')[answerIndex];
             selectedBtn.classList.add('selected');
 
@@ -917,33 +949,7 @@
                     answer: answerIndex,
                     timestamp: firebase.database.ServerValue.TIMESTAMP
                 });
-
-                const question = gameState.questions[gameState.currentQuestion];
-                if (answerIndex === question.correct && gameState.timeLeft > 0) {
-                    gameState.score++;
-                    await database.ref(`rooms/${currentRoom}/players/${currentPlayer.id}/score`).set(gameState.score);
-                    showSuccess('gameScreen', 'Правильный ответ!');
-                    document.getElementById('playerScore').textContent = gameState.score;
-                } else {
-                    showError('gameScreen', 'Неправильный ответ!');
-                }
                 console.log(`Игрок ${currentPlayer.name} выбрал ответ ${answerIndex} для вопроса ${gameState.currentQuestion + 1}`);
-
-                // Показываем правильный ответ для всех
-                document.querySelectorAll('.answer-btn').forEach((btn, index) => {
-                    if (index === question.correct) {
-                        btn.classList.add('correct');
-                    } else if (index === answerIndex && index !== question.correct) {
-                        btn.classList.add('incorrect');
-                    }
-                });
-
-                // Ждем перехода к следующему вопросу (управляется хостом)
-                if (isHost) {
-                    setTimeout(() => {
-                        nextQuestion();
-                    }, 1500);
-                }
 
             } catch (error) {
                 console.error('Ошибка сохранения ответа:', error);
@@ -1089,7 +1095,8 @@
                     answers: {},
                     score: 0,
                     timeLeft: 10,
-                    timerInterval: null
+                    timerInterval: null,
+                    playersAnswered: 0
                 };
 
                 roomRef.off();
