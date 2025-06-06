@@ -76,7 +76,7 @@
 
         .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+            box-shadow: 0 6px 20px rgba(102, 126,  Gibbons);
         }
 
         .btn:disabled {
@@ -147,7 +147,7 @@
             margin: 30px 0;
         }
 
-        .question-number {
+       時代: .question-number {
             color: #667eea;
             font-size: 18px;
             margin-bottom: 10px;
@@ -252,10 +252,7 @@
 
         .leaderboard-item {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px;
-            border-bottom: 1px solid #e0e0e0;
+           0px;
             font-size: 18px;
         }
 
@@ -806,7 +803,9 @@
                     console.log('Получен статус finished, показ результатов');
                     showResults();
                 } else if (info.currentQuestion !== gameState.currentQuestion && info.status === 'playing') {
+                    clearInterval(gameState.timerInterval); // Очищаем таймер перед новым вопросом
                     gameState.currentQuestion = info.currentQuestion;
+                    gameState.answers = {}; // Сбрасываем ответы для нового вопроса
                     if (gameState.currentQuestion < gameState.questions.length) {
                         console.log(`Переход к вопросу ${gameState.currentQuestion + 1}`);
                         displayQuestion();
@@ -846,6 +845,8 @@
                 btn.className = 'answer-btn';
                 btn.textContent = option;
                 btn.onclick = () => selectAnswer(index);
+                btn.style.pointerEvents = 'auto'; // Включаем взаимодействие с кнопками
+                btn.classList.remove('selected', 'correct', 'incorrect'); // Сбрасываем стили
                 answersGrid.appendChild(btn);
             });
 
@@ -869,6 +870,13 @@
                 if (gameState.timeLeft <= 0) {
                     clearInterval(gameState.timerInterval);
                     console.log(`Время на вопрос ${gameState.currentQuestion + 1} истекло`);
+                    if (!gameState.answers[gameState.currentQuestion]) {
+                        // Если игрок не ответил, сохраняем пустой ответ
+                        database.ref(`rooms/${currentRoom}/answers/${gameState.currentQuestion}/${currentPlayer.id}`).set({
+                            answer: -1,
+                            timestamp: firebase.database.ServerValue.TIMESTAMP
+                        });
+                    }
                     setTimeout(() => {
                         if (isHost) {
                             nextQuestion();
@@ -900,7 +908,8 @@
                 btn.style.pointerEvents = 'none';
             });
 
-            document.querySelectorAll('.answer-btn')[answerIndex].classList.add('selected');
+            const selectedBtn = document.querySelectorAll('.answer-btn')[answerIndex];
+            selectedBtn.classList.add('selected');
 
             try {
                 gameState.answers[gameState.currentQuestion] = answerIndex;
@@ -920,6 +929,22 @@
                 }
                 console.log(`Игрок ${currentPlayer.name} выбрал ответ ${answerIndex} для вопроса ${gameState.currentQuestion + 1}`);
 
+                // Показываем правильный ответ для всех
+                document.querySelectorAll('.answer-btn').forEach((btn, index) => {
+                    if (index === question.correct) {
+                        btn.classList.add('correct');
+                    } else if (index === answerIndex && index !== question.correct) {
+                        btn.classList.add('incorrect');
+                    }
+                });
+
+                // Ждем перехода к следующему вопросу (управляется хостом)
+                if (isHost) {
+                    setTimeout(() => {
+                        nextQuestion();
+                    }, 1500);
+                }
+
             } catch (error) {
                 console.error('Ошибка сохранения ответа:', error);
                 showError('gameScreen', 'Ошибка сохранения ответа');
@@ -930,32 +955,19 @@
         async function nextQuestion() {
             if (!isHost) return;
 
-            const question = gameState.questions[gameState.currentQuestion];
-            const answerBtns = document.querySelectorAll('.answer-btn');
+            console.log(`Хост переходит к следующему вопросу из ${gameState.currentQuestion}`);
+            const nextQuestionIndex = gameState.currentQuestion + 1;
             
-            answerBtns.forEach((btn, index) => {
-                if (index === question.correct) {
-                    btn.classList.add('correct');
-                } else if (gameState.answers[gameState.currentQuestion] === index) {
-                    btn.classList.add('incorrect');
-                }
-                btn.style.pointerEvents = 'none';
-            });
-
-            setTimeout(async () => {
-                const nextQuestionIndex = gameState.currentQuestion + 1;
-                
-                if (nextQuestionIndex >= gameState.questions.length) {
-                    console.log('Все вопросы пройдены, завершение игры');
-                    await finishGame();
-                } else {
-                    await database.ref(`rooms/${currentRoom}/info`).update({
-                        currentQuestion: nextQuestionIndex,
-                        questionStartTime: firebase.database.ServerValue.TIMESTAMP
-                    });
-                    console.log(`Переход к следующему вопросу: ${nextQuestionIndex + 1}`);
-                }
-            }, 2000);
+            if (nextQuestionIndex >= gameState.questions.length) {
+                console.log('Все вопросы пройдены, завершение игры');
+                await finishGame();
+            } else {
+                await database.ref(`rooms/${currentRoom}/info`).update({
+                    currentQuestion: nextQuestionIndex,
+                    questionStartTime: firebase.database.ServerValue.TIMESTAMP
+                });
+                console.log(`Переход к следующему вопросу: ${nextQuestionIndex + 1}`);
+            }
         }
 
         // Завершение игры
