@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Онлайн Квиз-Игра</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 600px;
+            width: 90%;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+
+        h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 50px;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .input-group {
+            margin: 20px 0;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            margin: 10px 0;
+            transition: border-color 0.3s ease;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .room-code {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+            background: #f8f9ff;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            letter-spacing: 3px;
+        }
+
+        .players-list {
+            background: #f8f9ff;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+
+        .player-item {
+            padding: 10px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .player-item:last-child {
+            border-bottom: none;
+        }
+
+        .host-badge {
+            background: #28a745;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 15px;
+            font-size: 12px;
+        }
+
+        .question-container {
+            margin: 30px 0;
+        }
+
+        .question-number {
+            color: #667eea;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .question-text {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 30px;
+            line-height: 1.4;
+        }
+
+        .answers-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 30px 0;
+        }
+
+        .answer-btn {
+            background: white;
+            border: 3px solid #e0e0e0;
+            padding: 20px;
+            border-radius: 15px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .answer-btn:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+        }
+
+        .answer-btn.selected {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .answer-btn.correct {
+            background: #28a745;
+            color: white;
+            border-color: #28a745;
+        }
+
+        .answer-btn.incorrect {
+            background: #dc3545;
+            color: white;
+            border-color: #dc3545;
+        }
+
+        .timer {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: conic-gradient(#667eea 0deg, #e0e0e0 0deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 20px auto;
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            position: relative;
+        }
+
+        .timer::before {
+            content: '';
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            background: white;
+            border-radius: 50%;
+            z-index: 1;
+        }
+
+        .timer-text {
+            position: relative;
+            z-index: 2;
+        }
+
+        .score-display {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #667eea;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+
+        .leaderboard {
+            background: #f8f9ff;
+            border-radius: 15px;
+            padding: 30px;
+            margin: 30px 0;
+        }
+
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 18px;
+        }
+
+        .leaderboard-item:last-child {
+            border-bottom: none;
+        }
+
+        .position {
+            font-weight: bold;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #667eea;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+        }
+
+        .position.gold { background: #ffd700; color: #333; }
+        .position.silver { background: #c0c0c0; color: #333; }
+        .position.bronze { background: #cd7f32; color: white; }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            color: #dc3545;
+            background: #f8d7da;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border: 1px solid #f5c6cb;
+        }
+
+        .success {
+            color: #155724;
+            background: #d4edda;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border: 1px solid #c3e6cb;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 20px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .answers-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .answer-btn {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Главный экран -->
+        <div id="homeScreen" class="screen active">
+            <h1>🧠 Квиз-Игра</h1>
+            <p>Создайте комнату или присоединитесь к игре!</p>
+            
+            <div class="input-group">
+                <input type="text" id="playerName" placeholder="Введите ваше имя" maxlength="20">
+            </div>
+            
+            <button class="btn" onclick="createRoom()">Создать комнату</button>
+            
+            <div class="input-group">
+                <input type="text" id="roomCode" placeholder="Код комнаты" maxlength="6">
+                <button class="btn" onclick="joinRoom()">Присоединиться</button>
+            </div>
+            
+            <div id="homeError" class="error" style="display: none;"></div>
+        </div>
+
+        <!-- Лобби -->
+        <div id="lobbyScreen" class="screen">
+            <h2>Комната создана!</h2>
+            <div id="displayRoomCode" class="room-code"></div>
+            
+            <button class="btn" onclick="copyRoomCode()">📋 Скопировать код</button>
+            <button class="btn" onclick="shareRoom()">📤 Поделиться ссылкой</button>
+            
+            <div class="players-list">
+                <h3>Игроки в комнате:</h3>
+                <div id="playersList"></div>
+            </div>
+            
+            <div id="hostControls" style="display: none;">
+                <button class="btn" onclick="startGame()" id="startBtn">🎮 Начать игру</button>
+            </div>
+            
+            <button class="btn" onclick="leaveRoom()">🚪 Покинуть комнату</button>
+        </div>
+
+        <!-- Игровой экран -->
+        <div id="gameScreen" class="screen">
+            <div class="score-display">
+                Очки: <span id="playerScore">0</span>
+            </div>
+            
+            <div class="question-container">
+                <div class="question-number">
+                    Вопрос <span id="questionNumber">1</span> из 10
+                </div>
+                
+                <div class="timer">
+                    <div class="timer-text" id="timerDisplay">10</div>
+                </div>
+                
+                <div class="question-text" id="questionText"></div>
+                
+                <div class="answers-grid" id="answersGrid"></div>
+            </div>
+        </div>
+
+        <!-- Экран результатов -->
+        <div id="resultsScreen" class="screen">
+            <h2>🏆 Результаты игры</h2>
+            
+            <div class="leaderboard" id="leaderboard"></div>
+            
+            <div id="hostResultsControls" style="display: none;">
+                <button class="btn" onclick="startNewGame()">🔄 Новая игра</button>
+            </div>
+            
+            <button class="btn" onclick="backToHome()">🏠 На главную</button>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-database-compat.min.js"></script>
+
+    <script>
+        // Firebase конфигурация (замените на свою)
+        const firebaseConfig = {
+            // Вставьте здесь вашу Firebase конфигурацию
+            apiKey: "your-api-key",
+            authDomain: "your-project.firebaseapp.com",
+            databaseURL: "https://your-project-default-rtdb.firebaseio.com",
+            projectId: "your-project",
+            storageBucket: "your-project.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "your-app-id"
+        };
+
+        // Инициализация Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // Глобальные переменные
+        let currentRoom = null;
+        let currentPlayer = null;
+        let isHost = false;
+        let gameState = {
+            currentQuestion: 0,
+            questions: [],
+            answers: {},
+            score: 0,
+            timeLeft: 10,
+            timerInterval: null
+        };
+
+        // База вопросов
+        const questionsBank = [
+            {
+                question: "Какая планета самая большая в Солнечной системе?",
+                options: ["Земля", "Юпитер", "Сатурн", "Нептун"],
+                correct: 1
+            },
+            {
+                question: "В каком году началась Вторая мировая война?",
+                options: ["1938", "1939", "1940", "1941"],
+                correct: 1
+            },
+            {
+                question: "Кто написал роман 'Война и мир'?",
+                options: ["Достоевский", "Толстой", "Пушкин", "Чехов"],
+                correct: 1
+            },
+            {
+                question: "Какой химический элемент обозначается символом 'O'?",
+                options: ["Олово", "Кислород", "Осмий", "Озон"],
+                correct: 1
+            },
+            {
+                question: "Сколько континентов на Земле?",
+                options: ["5", "6", "7", "8"],
+                correct: 2
+            },
+            {
+                question: "Какая самая длинная река в мире?",
+                options: ["Амазонка", "Нил", "Волга", "Миссисипи"],
+                correct: 1
+            },
+            {
+                question: "В каком году человек впервые высадился на Луну?",
+                options: ["1967", "1968", "1969", "1970"],
+                correct: 2
+            },
+            {
+                question: "Какой газ составляет большую часть атмосферы Земли?",
+                options: ["Кислород", "Азот", "Углекислый газ", "Аргон"],
+                correct: 1
+            },
+            {
+                question: "Кто изобрел телефон?",
+                options: ["Эдисон", "Белл", "Тесла", "Маркони"],
+                correct: 1
+            },
+            {
+                question: "Какая столица Австралии?",
+                options: ["Сидней", "Мельбурн", "Канберра", "Брисбен"],
+                correct: 2
+            },
+            {
+                question: "Сколько костей в теле взрослого человека?",
+                options: ["196", "206", "216", "226"],
+                correct: 1
+            },
+            {
+                question: "Какой самый маленький океан?",
+                options: ["Атлантический", "Индийский", "Северный Ледовитый", "Тихий"],
+                correct: 2
+            },
+            {
+                question: "В каком году пал Берлинский стена?",
+                options: ["1987", "1988", "1989", "1990"],
+                correct: 2
+            },
+            {
+                question: "Какая планета ближайшая к Солнцу?",
+                options: ["Венера", "Земля", "Меркурий", "Марс"],
+                correct: 2
+            },
+            {
+                question: "Кто создал социальную сеть Facebook?",
+                options: ["Билл Гейтс", "Стив Джобс", "Марк Цукерберг", "Ларри Пейдж"],
+                correct: 2
+            }
+        ];
+
+        // Вспомогательные функции
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        function showError(elementId, message) {
+            const errorElement = document.getElementById(elementId);
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+            setTimeout(() => {
+                errorElement.style.display = 'none';
+            }, 5000);
+        }
+
+        function generateRoomCode() {
+            return Math.random().toString(36).substr(2, 6).toUpperCase();
+        }
+
+        function generatePlayerId() {
+            return Math.random().toString(36).substr(2, 10);
+        }
+
+        // Создание комнаты
+        async function createRoom() {
+            const playerName = document.getElementById('playerName').value.trim();
+            
+            if (!playerName) {
+                showError('homeError', 'Введите ваше имя');
+                return;
+            }
+            if (playerName.length < 3 || playerName.length > 20) {
+                showError('homeError', 'Имя должно быть от 3 до 20 символов');
+                return;
+            }
+
+            try {
+                currentRoom = generateRoomCode();
+                currentPlayer = {
+                    id: generatePlayerId(),
+                    name: playerName,
+                    score: 0,
+                    isHost: true
+                };
+                isHost = true;
+
+                const roomRef = database.ref(`rooms/${currentRoom}`);
+                
+                await roomRef.set({
+                    info: {
+                        hostId: currentPlayer.id,
+                        status: 'waiting',
+                        currentQuestion: -1,
+                        createdAt: firebase.database.ServerValue.TIMESTAMP
+                    },
+                    players: {
+                        [currentPlayer.id]: currentPlayer
+                    }
+                });
+
+                document.getElementById('displayRoomCode').textContent = currentRoom;
+                document.getElementById('hostControls').style.display = 'block';
+                
+                listenToRoom();
+                showScreen('lobbyScreen');
+                
+            } catch (error) {
+                showError('homeError', 'Ошибка создания комнаты: ' + error.message);
+            }
+        }
+
+        // Присоединение к комнате
+        async function joinRoom() {
+            const playerName = document.getElementById('playerName').value.trim();
+            const roomCode = document.getElementById('roomCode').value.trim().toUpperCase();
+            
+            if (!playerName) {
+                showError('homeError', 'Введите ваше имя');
+                return;
+            }
+            if (playerName.length < 3 || playerName.length > 20) {
+                showError('homeError', 'Имя должно быть от 3 до 20 символов');
+                return;
+            }
+            if (!roomCode) {
+                showError('homeError', 'Введите код комнаты');
+                return;
+            }
+
+            try {
+                const roomRef = database.ref(`rooms/${roomCode}`);
+                const roomSnapshot = await roomRef.once('value');
+                
+                if (!roomSnapshot.exists()) {
+                    showError('homeError', 'Комната не найдена');
+                    return;
+                }
+
+                const roomData = roomSnapshot.val();
+                if (roomData.info.status !== 'waiting') {
+                    showError('homeError', 'Игра уже началась');
+                    return;
+                }
+
+                currentRoom = roomCode;
+                currentPlayer = {
+                    id: generatePlayerId(),
+                    name: playerName,
+                    score: 0,
+                    isHost: false
+                };
+                isHost = false;
+
+                await roomRef.child(`players/${currentPlayer.id}`).set(currentPlayer);
+
+                document.getElementById('displayRoomCode').textContent = currentRoom;
+                document.getElementById('hostControls').style.display = 'none';
+                
+                listenToRoom();
+                showScreen('lobbyScreen');
+                
+            } catch (error) {
+                showError('homeError', 'Ошибка подключения: ' + error.message);
+            }
+        }
+
+        // Прослушивание изменений в комнате
+        function listenToRoom() {
+            const roomRef = database.ref(`rooms/${currentRoom}`);
+            
+            roomRef.on('value', (snapshot) => {
+                if (!snapshot.exists()) {
+                    alert('Комната была удалена');
+                    backToHome();
+                    return;
+                }
+
+                const roomData = snapshot.val();
+                updatePlayersList(roomData.players);
+                
+                if (roomData.info.status === 'playing') {
+                    if (document.getElementById('lobbyScreen').classList.contains('active')) {
+                        startGameplay(roomData);
+                    }
+                } else if (roomData.info.status === 'finished') {
+                    showResults(roomData);
+                }
+            });
+        }
+
+        // Обновление списка игроков
+        function updatePlayersList(players) {
+            const playersListEl = document.getElementById('playersList');
+            playersListEl.innerHTML = '';
+            
+            Object.values(players).forEach(player => {
+                const playerEl = document.createElement('div');
+                playerEl.className = 'player-item';
+                playerEl.innerHTML = `
+                    <span>${player.name}</span>
+                    ${player.isHost ? '<span class="host-badge">Хост</span>' : ''}
+                `;
+                playersListEl.appendChild(playerEl);
+            });
+
+            // Обновление кнопки старта
+            const startBtn = document.getElementById('startBtn');
+            if (startBtn && isHost) {
+                const playerCount = Object.keys(players).length;
+                startBtn.disabled = playerCount < 2;
+                startBtn.textContent = playerCount < 2 ? 
+                    '⏳ Ждем игроков...' : '🎮 Начать игру';
+            }
+        }
+
+        // Копирование кода комнаты
+        function copyRoomCode() {
+            navigator.clipboard.writeText(currentRoom).then(() => {
+                const success = document.createElement('div');
+                success.className = 'success';
+                success.textContent = 'Код скопирован в буфер обмена!';
+                document.getElementById('lobbyScreen').appendChild(success);
+                setTimeout(() => success.remove(), 3000);
+            });
+        }
+
+        // Поделиться ссылкой
+        function shareRoom() {
+            const url = `${window.location.href}?room=${currentRoom}`;
+            navigator.clipboard.writeText(url).then(() => {
+                const success = document.createElement('div');
+                success.className = 'success';
+                success.textContent = 'Ссылка скопирована в буфер обмена!';
+                document.getElementById('lobbyScreen').appendChild(success);
+                setTimeout(() => success.remove(), 3000);
+            });
+        }
+
+        // Начало игры
+        async function startGame() {
+            if (!isHost) return;
+
+            try {
+                // Выбираем случайные 10 вопросов
+                const shuffled = questionsBank.sort(() => 0.5 - Math.random());
+                const selectedQuestions = shuffled.slice(0, 10);
+
+                const roomRef = database.ref(`rooms/${currentRoom}`);
+                
+                await roomRef.child('info').update({
+                    status: 'playing',
+                    currentQuestion: 0,
+                    questionStartTime: firebase.database.ServerValue.TIMESTAMP
+                });
+
+                await roomRef.child('questions').set(selectedQuestions);
+
+                gameState.questions = selectedQuestions;
+                gameState.currentQuestion = 0;
+                gameState.score = 0;
+                
+            } catch (error) {
+                showError('homeError', 'Ошибка запуска игры: ' + error.message);
+            }
+        }
+
+        // Начало геймплея
+        function startGameplay(roomData) {
+            gameState.questions = Object.values(roomData.questions || {});
+            gameState.currentQuestion = roomData.info.currentQuestion;
+            
+            showScreen('gameScreen');
+            listenToGameState();
+            displayQuestion();
+        }
+
+        // Прослушивание состояния игры
+        function listenToGameState() {
+            const gameRef = database.ref(`rooms/${currentRoom}/info`);
+            
+            gameRef.on('value', (snapshot) => {
+                const info = snapshot.val();
+                if (info.status === 'finished') {
+                    clearInterval(gameState.timerInterval);
+                    showResults();
+                } else if (info.currentQuestion !== gameState.currentQuestion) {
+                    gameState.currentQuestion = info.currentQuestion;
+                    if (gameState.currentQuestion < gameState.questions.length) {
+                        displayQuestion();
+                    }
+                }
+            });
+        }
+
+        // Отображение вопроса
+        function displayQuestion() {
+            if (gameState.currentQuestion >= gameState.questions.length) {
+                finishGame();
+                return;
+            }
+
+            const question = gameState.questions[gameState.currentQuestion];
+            
+            document.getElementById('questionNumber').textContent = gameState.currentQuestion + 1;
+            document.getElementById('questionText').textContent = question.question;
+            document.getElementById('playerScore').textContent = gameState.score;
+
+            const answersGrid = document.getElementById('answersGrid');
+            answersGrid.innerHTML = '';
+
+            question.options.forEach((option, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'answer-btn';
+                btn.textContent = option;
+                btn.onclick = () => selectAnswer(index);
+                answersGrid.appendChild(btn);
+            });
+
+            startTimer();
+        }
+
+        // Таймер
+        function startTimer() {
+            gameState.timeLeft = 10;
+            updateTimerDisplay();
+
+            gameState.timerInterval = setInterval(() => {
+                gameState.timeLeft--;
+                updateTimerDisplay();
+
+                if (gameState.timeLeft <= 0) {
+                    clearInterval(gameState.timerInterval);
+                    setTimeout(() => {
+                        if (isHost) {
+                            nextQuestion();
+                        }
+                    }, 1500);
+                }
+            }, 1000);
+        }
+
+        // Обновление отображения таймера
+        function updateTimerDisplay() {
+            const timerEl = document.getElementById('timerDisplay');
+            const timer = document.querySelector('.timer');
+            
+            timerEl.textContent = gameState.timeLeft;
+            
+            const percentage = (gameState.timeLeft / 10) * 360;
+            timer.style.background = `conic-gradient(#667eea ${percentage}deg, #e0e0e0 ${percentage}deg)`;
+        }
+
+        // Выбор ответа
+        async function selectAnswer(answerIndex) {
+            // Проверяем, не выбран ли уже ответ
+            if (Object.keys(gameState.answers).includes(gameState.currentQuestion.toString())) {
+                return;
+            }
+
+            // Блокируем кнопки после выбора
+            document.querySelectorAll('.answer-btn').forEach(btn => {
+                btn.style.pointerEvents = 'none';
+            });
+
+            // Подсвечиваем выбранный ответ
+            document.querySelectorAll('.answer-btn')[answerIndex].classList.add('selected');
+
+            try {
+                gameState.answers[gameState.currentQuestion] = answerIndex;
+                await database.ref(`rooms/${currentRoom}/answers/${gameState.currentQuestion}/${currentPlayer.id}`).set({
+                    answer: answerIndex,
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                });
+
+                // Проверяем правильность ответа
+                const question = gameState.questions[gameState.currentQuestion];
+                if (answerIndex === question.correct && gameState.timeLeft > 0) {
+                    gameState.score++;
+                    
+                    // Обновляем счет в базе данных
+                    await database.ref(`rooms/${currentRoom}/players/${currentPlayer.id}/score`).set(gameState.score);
+                    
+                    const success = document.createElement('div');
+                    success.className = 'success';
+                    success.textContent = 'Правильный ответ!';
+                    document.getElementById('gameScreen').appendChild(success);
+                    setTimeout(() => success.remove(), 1500);
+                } else {
+                    const error = document.createElement('div');
+                    error.className = 'error';
+                    error.textContent = 'Неправильный ответ!';
+                    document.getElementById('gameScreen').appendChild(error);
+                    setTimeout(() => error.remove(), 1500);
+                }
+
+            } catch (error) {
+                console.error('Ошибка сохранения ответа:', error);
+            }
+        }
+
+        // Следующий вопрос (только для хоста)
+        async function nextQuestion() {
+            if (!isHost) return;
+
+            // Показываем правильный ответ
+            const question = gameState.questions[gameState.currentQuestion];
+            const answerBtns = document.querySelectorAll('.answer-btn');
+            
+            answerBtns.forEach((btn, index) => {
+                if (index === question.correct) {
+                    btn.classList.add('correct');
+                } else if (gameState.answers[gameState.currentQuestion] === index) {
+                    btn.classList.add('incorrect');
+                }
+                btn.style.pointerEvents = 'none';
+            });
+
+            // Ждем 2 секунды, затем переходим к следующему вопросу
+            setTimeout(async () => {
+                const nextQuestionIndex = gameState.currentQuestion + 1;
+                
+                if (nextQuestionIndex >= gameState.questions.length) {
+                    await finishGame();
+                } else {
+                    await database.ref(`rooms/${currentRoom}/info`).update({
+                        currentQuestion: nextQuestionIndex,
+                        questionStartTime: firebase.database.ServerValue.TIMESTAMP
+                    });
+                }
+            }, 2000);
+        }
+
+        // Завершение игры
+        async function finishGame() {
+            if (isHost) {
+                await database.ref(`rooms/${currentRoom}/info`).update({
+                    status: 'finished',
+                    questionEndTime: firebase.database.ServerValue.TIMESTAMP
+                });
+            }
+        }
+
+        // Показ результатов
+        function showResults(roomData) {
+            if (!roomData) {
+                // Получаем данные из базы
+                database.ref(`rooms/${currentRoom}`).once('value', (snapshot) => {
+                    if (snapshot.exists()) {
+                        showResults(snapshot.val());
+                    }
+                });
+                return;
+            }
+
+            showScreen('resultsScreen');
+            document.getElementById('hostResultsControls').style.display = isHost ? 'block' : 'none';
+
+            const players = Object.values(roomData.players || {});
+            players.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name)); // Сортировка по баллам, затем по имени при равных баллах
+
+            const leaderboard = document.getElementById('leaderboard');
+            leaderboard.innerHTML = '<h3>🏆 Таблица лидеров</h3>';
+
+            players.forEach((player, index) => {
+                const item = document.createElement('div');
+                item.className = 'leaderboard-item';
+                
+                let positionClass = '';
+                if (index === 0) positionClass = 'gold';
+                else if (index === 1) positionClass = 'silver';
+                else if (index === 2) positionClass = 'bronze';
+                
+                item.innerHTML = `
+                    <div style="display: flex; align-items: center;">
+                        <span class="position ${positionClass}">${index + 1}</span>
+                        <span>${player.name}</span>
+                    </div>
+                    <span>${player.score} очков</span>
+                `;
+                leaderboard.appendChild(item);
+            });
+        }
+
+        // Новая игра (только для хоста)
+        async function startNewGame() {
+            if (!isHost) return;
+
+            try {
+                // Сбрасываем очки всех игроков
+                const roomRef = database.ref(`rooms/${currentRoom}`);
+                const playersSnapshot = await roomRef.child('players').once('value');
+                const players = playersSnapshot.val();
+                
+                const updates = {};
+                Object.keys(players).forEach(playerId => {
+                    updates[`players/${playerId}/score`] = 0;
+                });
+
+                // Выбираем новые случайные вопросы
+                const shuffled = questionsBank.sort(() => 0.5 - Math.random());
+                const selectedQuestions = shuffled.slice(0, 10);
+
+                // Обновляем состояние комнаты
+                updates['info/status'] = 'playing';
+                updates['info/currentQuestion'] = 0;
+                updates['info/questionStartTime'] = firebase.database.ServerValue.TIMESTAMP;
+                updates['questions'] = selectedQuestions;
+                updates['answers'] = {};
+
+                await roomRef.update(updates);
+
+                // Сбрасываем локальное состояние
+                gameState.questions = selectedQuestions;
+                gameState.currentQuestion = 0;
+                gameState.score = 0;
+                gameState.answers = {};
+                
+                showScreen('gameScreen');
+                displayQuestion();
+
+            } catch (error) {
+                showError('homeError', 'Ошибка начала новой игры: ' + error.message);
+            }
+        }
+
+        // Покинуть комнату
+        async function leaveRoom() {
+            try {
+                if (!currentRoom || !currentPlayer) return;
+
+                const roomRef = database.ref(`rooms/${currentRoom}`);
+                
+                if (isHost) {
+                    // Если хост покидает, удаляем комнату
+                    await roomRef.remove();
+                } else {
+                    // Удаляем только данные игрока
+                    await roomRef.child(`players/${currentPlayer.id}`).remove();
+                    await roomRef.child(`answers`).child(currentPlayer.id).remove();
+                }
+
+                // Сбрасываем локальное состояние
+                currentRoom = null;
+                currentPlayer = null;
+                isHost = false;
+                gameState = {
+                    currentQuestion: 0,
+                    questions: [],
+                    answers: {},
+                    score: 0,
+                    timeLeft: 10,
+                    timerInterval: null
+                };
+
+                // Останавливаем слушатели
+                roomRef.off();
+                database.ref(`rooms/${currentRoom}/info`).off();
+
+                // Возвращаемся на главный экран
+                showScreen('homeScreen');
+                document.getElementById('playerName').value = '';
+                document.getElementById('roomCode').value = '';
+
+            } catch (error) {
+                showError('homeError', 'Ошибка выхода из комнаты: ' + error.message);
+            }
+        }
+
+        // Возврат на главную
+        function backToHome() {
+            leaveRoom();
+        }
+
+        // Обработка параметров URL для автоматического заполнения кода комнаты
+        window.onload = () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const roomCode = urlParams.get('room');
+            if (roomCode) {
+                document.getElementById('roomCode').value = roomCode;
+            }
+        };
+    </script>
+</body>
+</html>
